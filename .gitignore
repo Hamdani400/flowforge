@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.local
+
+coverage
+
+.prisma
+
+.DS_Store
+
+pnpm-lock.yaml
+
+apps/api/prisma/migrations
+
+.idea
+.vscode
