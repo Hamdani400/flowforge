@@ -5,6 +5,10 @@ import { NodeExecutionResult } from "./node-executor";
 
 import { NodeRegistry } from "./node-registry";
 
+import { exponentialBackoff, sleep } from "./retry";
+
+import { withTimeout } from "./timeout";
+
 export class WorkflowExecutor {
   constructor(private registry: NodeRegistry) {}
 
@@ -22,16 +26,48 @@ export class WorkflowExecutor {
 
       const executor = this.registry.get(node.type);
 
-      console.log(`Executing node ${node.id} (${node.type})`);
+      const maxRetries = node.retryPolicy?.maxRetries || 0;
 
-      const result = await executor.execute(node, {
-        previousResults: results,
-      });
+      let attempt = 0;
+      let success = false;
 
-      results[node.id] = result;
+      while (attempt <= maxRetries && !success) {
+        try {
+          console.log(`Executing node ${node.id}, attempt ${attempt + 1}`);
 
-      if (!result.success) {
-        throw new Error(`Node ${node.id} failed: ${result.error}`);
+          let execution = executor.execute(node, {
+            previousResults: results,
+          });
+
+          if (node.timeoutMs) {
+            execution = withTimeout(execution, node.timeoutMs);
+          }
+
+          const result = await execution;
+
+          results[node.id] = result;
+
+          if (!result.success) {
+            throw new Error(result.error || "Execution failed");
+          }
+
+          success = true;
+        } catch (error) {
+          attempt++;
+
+          if (attempt > maxRetries) {
+            throw error;
+          }
+
+          const backoff = exponentialBackoff(
+            node.retryPolicy?.backoffMs || 1000,
+            attempt,
+          );
+
+          console.log(`Retrying node ${node.id} in ${backoff}ms`);
+
+          await sleep(backoff);
+        }
       }
     }
 

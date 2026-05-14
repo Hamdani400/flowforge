@@ -8,6 +8,7 @@ import {
   NodeRegistry,
   LogExecutor,
   DelayExecutor,
+  FailingExecutor,
 } from "@flowforge/workflow-engine";
 
 const app = Fastify({
@@ -19,6 +20,8 @@ const registry = new NodeRegistry();
 registry.register("log", new LogExecutor());
 
 registry.register("delay", new DelayExecutor());
+
+registry.register("http", new FailingExecutor());
 
 const executor = new WorkflowExecutor(registry);
 
@@ -76,10 +79,16 @@ app.get("/run-workflow", async () => {
     nodes: [
       {
         id: "A",
-        type: "log",
-        config: {
-          message: "Workflow started",
+        type: "http",
+
+        retryPolicy: {
+          maxRetries: 3,
+          backoffMs: 500,
         },
+
+        timeoutMs: 2000,
+
+        config: {},
       },
       {
         id: "B",

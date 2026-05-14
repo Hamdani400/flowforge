@@ -22,4 +22,7 @@ __exportStar(require("./node-executor"), exports);
 __exportStar(require("./node-registry"), exports);
 __exportStar(require("./executors/log.executor"), exports);
 __exportStar(require("./executors/delay.executor"), exports);
+__exportStar(require("./retry"), exports);
+__exportStar(require("./timeout"), exports);
+__exportStar(require("./executors/failing.executor"), exports);
 //# sourceMappingURL=index.js.map
