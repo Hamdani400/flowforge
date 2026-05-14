@@ -1,11 +1,26 @@
 import Fastify from "fastify";
 import { prisma } from "./lib/prisma";
 
-import { validateWorkflow, topologicalSort } from "@flowforge/workflow-engine";
+import {
+  validateWorkflow,
+  topologicalSort,
+  WorkflowExecutor,
+  NodeRegistry,
+  LogExecutor,
+  DelayExecutor,
+} from "@flowforge/workflow-engine";
 
 const app = Fastify({
   logger: true,
 });
+
+const registry = new NodeRegistry();
+
+registry.register("log", new LogExecutor());
+
+registry.register("delay", new DelayExecutor());
+
+const executor = new WorkflowExecutor(registry);
 
 app.get("/health", async () => {
   await prisma.$queryRaw`SELECT 1`;
@@ -54,6 +69,48 @@ app.get("/test-workflow", async () => {
   return {
     executionOrder: order,
   };
+});
+
+app.get("/run-workflow", async () => {
+  const workflow = {
+    nodes: [
+      {
+        id: "A",
+        type: "log",
+        config: {
+          message: "Workflow started",
+        },
+      },
+      {
+        id: "B",
+        type: "delay",
+        config: {
+          duration: 2000,
+        },
+      },
+      {
+        id: "C",
+        type: "log",
+        config: {
+          message: "Workflow finished",
+        },
+      },
+    ],
+    edges: [
+      {
+        source: "A",
+        target: "B",
+      },
+      {
+        source: "B",
+        target: "C",
+      },
+    ],
+  };
+
+  const result = await executor.execute(workflow);
+
+  return result;
 });
 
 const start = async () => {
