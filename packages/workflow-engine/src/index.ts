@@ -8,3 +8,7 @@ export * from "./node-registry";
 
 export * from "./executors/log.executor";
 export * from "./executors/delay.executor";
+export * from "./retry";
+export * from "./timeout";
+
+export * from "./executors/failing.executor";
